@@ -4,6 +4,7 @@ import express from "express";
 import dotenv from "dotenv";
 import { conectarMongoDB, getColecaoRaw, getColecaoTratada, getColecaoRejeitada, desconectarMongoDB } from "./db";
 import { processarLeituras } from "./processor";
+import { buscarDadosDoReceptor, iniciarSincronizacao } from "./receptor-client";
 
 dotenv.config();
 
@@ -27,6 +28,22 @@ app.post("/processar", async (req, res) => {
   }
 });
 
+app.post("/sincronizar-receptor", async (req, res) => {
+  try {
+    const colecaoRaw = getColecaoRaw();
+    const resultado = await buscarDadosDoReceptor(colecaoRaw);
+
+    res.json({
+      sucesso: true,
+      mensagem: "Sincronização com receptor concluída",
+      novos: resultado.novos,
+      erros: resultado.erros
+    });
+  } catch (erro) {
+    res.status(500).json({ erro: String(erro) });
+  }
+});
+
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
@@ -34,6 +51,13 @@ app.get("/health", (req, res) => {
 async function iniciar() {
   try {
     await conectarMongoDB(MONGO_URI);
+
+    const colecaoRaw = getColecaoRaw();
+    const sincronizarIntervalo = parseInt(process.env.SINCRONIZAR_INTERVALO_MS || "30000", 10);
+
+    // Iniciar sincronização automática com o receptor
+    iniciarSincronizacao(colecaoRaw, sincronizarIntervalo);
+
     app.listen(PORT, () => {
       console.log(`Servidor rodando em http://localhost:${PORT}`);
     });
