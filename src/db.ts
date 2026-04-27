@@ -32,7 +32,7 @@ export async function conectarMongoDB(mongoUri: string): Promise<void> {
   });
   await mongoClient.connect();
   mongoDb = mongoClient.db("sensor_data");
-  console.log("MongoDB conectado");
+  console.log("[DB] MongoDB conectado");
 }
 
 export function getColecaoRaw(): Collection {
@@ -40,9 +40,20 @@ export function getColecaoRaw(): Collection {
   return mongoDb.collection("leituras");
 }
 
+export function getColecaoDuplicatas(): Collection {
+  if (!mongoDb) throw new Error("MongoDB não conectado");
+  return mongoDb.collection("duplicatas_detectadas");
+}
+
+export function getColecaoRejeitadas(): Collection {
+  if (!mongoDb) throw new Error("MongoDB não conectado");
+  return mongoDb.collection("leituras_rejeitadas");
+}
+
 export async function desconectarMongoDB(): Promise<void> {
   if (mongoClient) {
     await mongoClient.close();
+    console.log("[DB] MongoDB desconectado");
   }
 }
 
@@ -76,6 +87,7 @@ export async function salvarMedicao(leitura: LeituraTratada): Promise<void> {
 export async function salvarRejeicao(rejeicao: LeituraRejeitada): Promise<void> {
   const leituraData = rejeicao.leitura_original as any;
 
+  // 1. Salvar em PostgreSQL para exibição de alertas
   const alertLog = new AlertLog();
   alertLog.id_start_rule = 0;
   alertLog.login = "system";
@@ -85,4 +97,11 @@ export async function salvarRejeicao(rejeicao: LeituraRejeitada): Promise<void> 
   alertLog.status = "alert_status_error";
 
   await AppDataSource.getRepository(AlertLog).save(alertLog);
+
+  // 2. Salvar em MongoDB para auditoria
+  const colecaoRejeitadas = getColecaoRejeitadas();
+  await colecaoRejeitadas.insertOne({
+    ...rejeicao,
+    _timestamp_rejeicao: new Date()
+  });
 }
