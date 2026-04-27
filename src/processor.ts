@@ -65,6 +65,8 @@ export async function processarLeituras(
           throw new Error("Tipo de sensor desconhecido");
         }
 
+        console.log(`[PROCESSOR] Processando ${leitura.uid} (tipo: ${tipo}):`, JSON.stringify(leitura).substring(0, 150));
+
         // 2. Detectar duplicatas
         const ehDuplicata = await isDuplicataAsync(leitura, colecaoDuplicatas);
         if (ehDuplicata) {
@@ -101,9 +103,11 @@ export async function processarLeituras(
         // 4. Validar ranges de valores
         const { valido, erros } = validarRange(leituraComTratamento, tipo);
         if (!valido) {
+          const motivo = `Valores fora de faixa: ${erros.join("; ")} | Data recebida: ${JSON.stringify(leituraComTratamento)}`;
+          console.log(`[PROCESSOR] ❌ Leitura ${leitura.uid} rejeitada - ${erros.join(", ")}`);
           await salvarRejeicao({
             leitura_original: leitura,
-            motivo: `Valores fora de faixa: ${erros.join("; ")}`,
+            motivo: motivo,
             timestamp: new Date()
           });
           estatisticas.total_rejeitadas++;
@@ -158,7 +162,8 @@ export async function processarLeituras(
 
 
 function construirFiltro(config: ProcessarLeituraOpcoes): Document {
-  const filtro: Document = { _processada: { $ne: true } };
+  // Start fresh - reprocess everything to diagnose
+  const filtro: Document = {};  // Empty filter = no _processada check
 
   if (config.reprocessar_invalidas) {
     delete filtro._processada;

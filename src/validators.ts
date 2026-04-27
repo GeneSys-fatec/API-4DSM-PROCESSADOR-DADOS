@@ -31,8 +31,13 @@ export function validarRange(
     const valor = (leitura as any)[campo];
     const { min, max } = ranges[campo];
 
+    // Skip null/undefined values - they should be handled by null treatment strategy
     if (valor === undefined || valor === null) {
-      erros.push(`${campo}: valor ausente`);
+      return;
+    }
+
+    if (typeof valor !== 'number' || isNaN(valor)) {
+      erros.push(`${campo}: valor inválido (não é número)`);
       return;
     }
 

@@ -1,11 +1,6 @@
 import { SensorLeitura, SensorPluviometro, SensorQualidadeAr, SensorSolo } from "./types";
 
-/**
- * Normaliza uma leitura de sensor conforme padrões definidos:
- * - Pluviômetro: chuva em mm, umidade %, temperatura em °C
- * - Qualidade do Ar: CO2 em ppm, PM2.5 em µg/m³, índice 1-5
- * - Solo: umidade %, pH, temperatura em °C
- */
+
 export function normalizarLeitura(leitura: SensorLeitura, tipo: string): SensorLeitura {
   switch (tipo) {
     case "pluviometro":
@@ -19,12 +14,6 @@ export function normalizarLeitura(leitura: SensorLeitura, tipo: string): SensorL
   }
 }
 
-/**
- * Normaliza sensor pluviométrico
- * - Garante que chuva está em mm (0-1000)
- * - Garante umidade em % (0-100)
- * - Garante temperatura em °C (-50 a 60)
- */
 function normalizarPluviometro(leitura: SensorPluviometro): SensorPluviometro {
   return {
     ...leitura,
@@ -34,12 +23,6 @@ function normalizarPluviometro(leitura: SensorPluviometro): SensorPluviometro {
   };
 }
 
-/**
- * Normaliza sensor de qualidade do ar
- * - Garante CO2 em ppm (200-5000)
- * - Garante PM2.5 em µg/m³ (0-500)
- * - Garante índice de qualidade 1-5
- */
 function normalizarQualidadeAr(leitura: SensorQualidadeAr): SensorQualidadeAr {
   return {
     ...leitura,
@@ -49,12 +32,7 @@ function normalizarQualidadeAr(leitura: SensorQualidadeAr): SensorQualidadeAr {
   };
 }
 
-/**
- * Normaliza sensor de solo
- * - Garante umidade em % (0-100)
- * - Garante pH 3-10
- * - Garante temperatura em °C (-20 a 60)
- */
+
 function normalizarSolo(leitura: SensorSolo): SensorSolo {
   return {
     ...leitura,
@@ -64,9 +42,6 @@ function normalizarSolo(leitura: SensorSolo): SensorSolo {
   };
 }
 
-/**
- * Interpola valor nulo baseado em valores adjacentes
- */
 export function interpolarValor(
   valores: (number | null | undefined)[]
 ): number | null {
