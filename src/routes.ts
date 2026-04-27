@@ -9,12 +9,6 @@ export async function routes(fastify: FastifyInstance, _options: FastifyPluginOp
     return { status: "ok" };
   });
 
-  /**
-   * POST /processar
-   * 
-   * Processa leituras brutes do MongoDB manualmente
-   * Pode ser acionado via curl ou integração
-   */
   fastify.post<{ Body: ProcessarLeituraRequest }>(
     "/processar",
     async (request: FastifyRequest<{ Body: ProcessarLeituraRequest }>, reply: FastifyReply) => {
@@ -69,16 +63,6 @@ export async function routes(fastify: FastifyInstance, _options: FastifyPluginOp
     }
   );
 
-  /**
-   * POST /scheduler/iniciar
-   * 
-   * Inicia o scheduler automático
-   * Body (opcional):
-   * {
-   *   "intervalo_ms": 60000,
-   *   "opcoes_processamento": { ... }
-   * }
-   */
   fastify.post("/scheduler/iniciar", async (request: FastifyRequest<{ Body: any }>, reply: FastifyReply) => {
     try {
       const config = request.body || {};
@@ -99,11 +83,6 @@ export async function routes(fastify: FastifyInstance, _options: FastifyPluginOp
     }
   });
 
-  /**
-   * POST /scheduler/parar
-   * 
-   * Para o scheduler automático
-   */
   fastify.post("/scheduler/parar", async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       pararScheduler();
@@ -123,11 +102,6 @@ export async function routes(fastify: FastifyInstance, _options: FastifyPluginOp
     }
   });
 
-  /**
-   * POST /scheduler/reiniciar
-   * 
-   * Reinicia o scheduler com novas configurações
-   */
   fastify.post("/scheduler/reiniciar", async (request: FastifyRequest<{ Body: any }>, reply: FastifyReply) => {
     try {
       const config = request.body || {};
@@ -148,11 +122,6 @@ export async function routes(fastify: FastifyInstance, _options: FastifyPluginOp
     }
   });
 
-  /**
-   * GET /scheduler/status
-   * 
-   * Retorna status atual do scheduler
-   */
   fastify.get("/scheduler/status", async (_request: FastifyRequest, reply: FastifyReply) => {
     return reply.code(200).send({
       sucesso: true,
