@@ -1,76 +1,36 @@
-// server.ts
-
-import express from "express";
+import "reflect-metadata";
+import fastify from "fastify";
 import dotenv from "dotenv";
-import { conectarMongoDB, getColecaoRaw, getColecaoTratada, getColecaoRejeitada, desconectarMongoDB } from "./db";
-import { processarLeituras } from "./processor";
-import { buscarDadosDoReceptor, iniciarSincronizacao } from "./receptor-client";
+import { AppDataSource, conectarMongoDB, desconectarMongoDB, getColecaoRaw } from "./db";
+import { routes } from "./routes";
 
 dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
+const app = fastify();
+const PORT = parseInt(process.env.PORT || "3000");
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://gbmedeiros00:123@api-4dsm.u46aa51.mongodb.net/?appName=API-4DSM";
 
-app.use(express.json());
-
-app.post("/processar", async (req, res) => {
+const start = async () => {
   try {
-    const colecaoRaw = getColecaoRaw();
-    const colecaoTratada = getColecaoTratada();
-    const colecaoRejeitada = getColecaoRejeitada();
-
-    await processarLeituras(colecaoRaw, colecaoTratada, colecaoRejeitada);
-
-    res.json({ sucesso: true, mensagem: "Processamento concluído" });
-  } catch (erro) {
-    res.status(500).json({ erro: String(erro) });
-  }
-});
-
-app.post("/sincronizar-receptor", async (req, res) => {
-  try {
-    const colecaoRaw = getColecaoRaw();
-    const resultado = await buscarDadosDoReceptor(colecaoRaw);
-
-    res.json({
-      sucesso: true,
-      mensagem: "Sincronização com receptor concluída",
-      novos: resultado.novos,
-      erros: resultado.erros
-    });
-  } catch (erro) {
-    res.status(500).json({ erro: String(erro) });
-  }
-});
-
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
-
-async function iniciar() {
-  try {
+    await AppDataSource.initialize();
     await conectarMongoDB(MONGO_URI);
-
-    const colecaoRaw = getColecaoRaw();
-    const sincronizarIntervalo = parseInt(process.env.SINCRONIZAR_INTERVALO_MS || "30000", 10);
-
-    // Iniciar sincronização automática com o receptor
-    iniciarSincronizacao(colecaoRaw, sincronizarIntervalo);
-
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando em http://localhost:${PORT}`);
-    });
+    await app.register(routes);
+    await app.listen({ port: PORT, host: "0.0.0.0" });
+    console.log(`Servidor rodando em http://localhost:${PORT}`);
   } catch (erro) {
     console.error("Erro ao iniciar:", erro);
     process.exit(1);
   }
-}
+};
 
 process.on("SIGINT", async () => {
-  console.log("\nEncerrando...");
+  console.log("Encerrando...");
+  await app.close();
   await desconectarMongoDB();
+  if (AppDataSource.isInitialized) {
+    await AppDataSource.destroy();
+  }
   process.exit(0);
 });
 
-iniciar();
+start();

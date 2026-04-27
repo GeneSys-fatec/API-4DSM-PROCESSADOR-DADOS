@@ -1,5 +1,3 @@
-// deduplicator.ts
-
 import { SensorLeitura } from "./types";
 
 const seenKeys = new Set<string>();

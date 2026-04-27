@@ -1,35 +1,88 @@
-// db.ts
-
+import "reflect-metadata";
 import { MongoClient, Db, Collection } from "mongodb";
+import { DataSource } from "typeorm";
+import { Measurement } from "./entities/Measurement";
+import { AlertLog } from "./entities/AlertLog";
+import { LeituraTratada, LeituraRejeitada } from "./types";
 
-let client: MongoClient | null = null;
-let db: Db | null = null;
+let mongoClient: MongoClient | null = null;
+let mongoDb: Db | null = null;
+
+export const AppDataSource = new DataSource({
+  type: "postgres",
+  host: process.env.DB_HOST || "localhost",
+  port: parseInt(process.env.DB_PORT || "5432"),
+  username: process.env.DB_USERNAME || "postgres",
+  password: process.env.DB_PASSWORD || "postgres",
+  database: process.env.DB_NAME || "api4dsm",
+  entities: [Measurement, AlertLog],
+  synchronize: true,
+  logging: false,
+});
 
 export async function conectarMongoDB(mongoUri: string): Promise<void> {
-  client = new MongoClient(mongoUri);
-  await client.connect();
-  db = client.db("sensor_data");
-  console.log("✓ Conectado ao MongoDB");
+  mongoClient = new MongoClient(mongoUri, {
+    tls: true,
+    tlsAllowInvalidCertificates: true,
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 30000,
+    connectTimeoutMS: 30000,
+    socketTimeoutMS: 30000,
+    retryWrites: true,
+  });
+  await mongoClient.connect();
+  mongoDb = mongoClient.db("sensor_data");
+  console.log("MongoDB conectado");
 }
 
 export function getColecaoRaw(): Collection {
-  if (!db) throw new Error("Banco de dados não conectado");
-  return db.collection("leituras");
-}
-
-export function getColecaoTratada(): Collection {
-  if (!db) throw new Error("Banco de dados não conectado");
-  return db.collection("leituras_tratadas");
-}
-
-export function getColecaoRejeitada(): Collection {
-  if (!db) throw new Error("Banco de dados não conectado");
-  return db.collection("leituras_rejeitadas");
+  if (!mongoDb) throw new Error("MongoDB não conectado");
+  return mongoDb.collection("leituras");
 }
 
 export async function desconectarMongoDB(): Promise<void> {
-  if (client) {
-    await client.close();
-    console.log("✓ Desconectado do MongoDB");
+  if (mongoClient) {
+    await mongoClient.close();
   }
+}
+
+export async function salvarMedicao(leitura: LeituraTratada): Promise<void> {
+  const leituraData = leitura as any;
+  const tipo = leituraData.uid.substring(0, 1);
+
+  let paramId: number = 0;
+  let valor: number = 0;
+
+  if (tipo === "P" && leituraData.chuva_mm !== undefined) {
+    paramId = 1;
+    valor = leituraData.chuva_mm;
+  } else if (tipo === "Q" && leituraData.umidade !== undefined) {
+    paramId = 2;
+    valor = leituraData.umidade;
+  } else if (tipo === "S" && leituraData.umidade_solo !== undefined) {
+    paramId = 3;
+    valor = leituraData.umidade_solo;
+  }
+
+  const measurement = new Measurement();
+  measurement.id_parameter = paramId;
+  measurement.raw_value = valor;
+  measurement.decimal_2_4 = valor;
+  measurement.timestamp = new Date(leituraData.unixtime);
+
+  await AppDataSource.getRepository(Measurement).save(measurement);
+}
+
+export async function salvarRejeicao(rejeicao: LeituraRejeitada): Promise<void> {
+  const leituraData = rejeicao.leitura_original as any;
+
+  const alertLog = new AlertLog();
+  alertLog.id_start_rule = 0;
+  alertLog.login = "system";
+  alertLog.text = rejeicao.motivo;
+  alertLog.triggered_value = JSON.stringify(leituraData);
+  alertLog.triggered_at = new Date(leituraData.unixtime);
+  alertLog.status = "alert_status_error";
+
+  await AppDataSource.getRepository(AlertLog).save(alertLog);
 }

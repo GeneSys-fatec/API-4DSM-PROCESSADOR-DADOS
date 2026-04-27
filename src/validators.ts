@@ -1,5 +1,3 @@
-// validators.ts
-
 import { SensorLeitura } from "./types";
 
 export const RANGES: Record<string, Record<string, { min: number; max: number }>> = {

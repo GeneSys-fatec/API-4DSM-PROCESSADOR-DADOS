@@ -1,5 +1,3 @@
-// types.ts
-
 export interface SensorPluviometro {
   uid: string;
   unixtime: number;
