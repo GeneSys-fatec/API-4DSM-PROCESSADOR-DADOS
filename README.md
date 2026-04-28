@@ -1,101 +1,59 @@
 # Sensor Data Processor
 
-Backend Express + TypeScript para processamento de dados de sensores meteorológicos.
+API em Python para processar leituras de sensores, persistindo os dados válidos no PostgreSQL e removendo os documentos de origem do MongoDB após o envio.
 
-## 🚀 Setup Rápido
-
-```bash
-# 1. Instalar dependências
-npm install
-
-# 2. Build TypeScript
-npm run build
-
-# 3. Rodar
-npm start
-```
-
-## 🔧 Desenvolvimento
+## Setup rápido
 
 ```bash
-npm run dev
+python -m venv .venv
+.venv/Scripts/activate
+pip install -r requirements.txt
 ```
 
-## 📡 API
-
-### POST /processar
-Inicia o processamento de leituras não processadas da collection `leituras`.
+## Executar a aplicação
 
 ```bash
-curl -X POST http://localhost:3000/processar
+python src/main.py
 ```
 
-Response:
-```json
-{
-  "sucesso": true,
-  "mensagem": "Processamento concluído"
-}
-```
+## Endpoints
 
-### GET /health
-Health check.
+### `GET /health`
+Health check da aplicação.
 
 ```bash
 curl http://localhost:3000/health
 ```
 
-## 📊 Dados Processados
+### `POST /processar`
+Processa as leituras pendentes da collection MongoDB e salva os resultados no PostgreSQL.
 
-### Input: Collection `leituras`
-- Dados brutos de 3 tipos de sensores
-
-### Output: Collection `leituras_tratadas`
-- Dados validados e normalizados
-
-### Output: Collection `leituras_rejeitadas`
-- Dados com erros de validação
-
-## 🔍 Fluxo de Processamento
-
-1. **Deduplicação** - Detecta registros duplicados
-2. **Validação** - Verifica faixas aceitáveis
-3. **Normalização** - Converte unidades
-4. **Persistência** - Salva em collection apropriada
-
-## 📋 Tipos de Sensores
-
-### PLUVIOMETRO
-- chuva_mm: 0-1000
-- umidade: 0-100
-- temperatura: -50 a 60°C
-
-### QUALIDADE_AR
-- co2: 200-5000 ppm
-- pm25: 0-500
-- qualidade_index: 1-5
-
-### SOLO
-- umidade_solo: 0-100
-- ph: 3-10
-- temp_solo: -20 a 60°C
-
-## 📝 Variáveis de Ambiente
-
-```
-MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/?appName=app
-PORT=3000
+```bash
+curl -X POST http://localhost:3000/processar
 ```
 
-## 📁 Estrutura
+### `POST /scheduler/iniciar`
+Inicia o scheduler com a requisição padrão ou com um payload opcional de processamento.
 
-```
-src/
-├── types.ts           # Interfaces TypeScript
-├── validators.ts      # Validação de ranges
-├── normalizer.ts      # Normalização de dados
-├── deduplicator.ts    # Detecção de duplicatas
-├── processor.ts       # Orquestrador
-├── db.ts              # Conexão MongoDB
-└── server.ts          # Servidor Express
-```
+### `POST /scheduler/parar`
+Para o scheduler.
+
+### `POST /scheduler/reiniciar`
+Reinicia o scheduler.
+
+### `GET /scheduler/status`
+Exibe o estado atual do scheduler.
+
+## Fluxo de processamento
+
+1. Busca leituras no MongoDB.
+2. Limpa e normaliza os dados.
+3. Remove duplicatas e valores inválidos.
+4. Persiste as medições no PostgreSQL.
+5. Exclui do MongoDB os documentos que já foram enviados.
+
+## Scheduler
+
+O scheduler está configurado para rodar a cada 2 minutos por padrão.
+
+Você pode ajustar isso com a variável `SCHEDULER_INTERVAL_MS` em config.py.
