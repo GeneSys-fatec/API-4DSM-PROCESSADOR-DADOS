@@ -1,9 +1,8 @@
 import { Collection, Document } from "mongodb";
 import { validarRange, getTipo } from "./validators";
-import { isDuplicataAsync } from "./deduplicator";
 import { normalizarLeitura, interpolarValor } from "./normalizer";
-import { salvarMedicao, salvarRejeicao, getColecaoDuplicatas, getColecaoRaw } from "./db";
-import { SensorLeitura, LeituraTratada, LeituraRejeitada, ProcessarLeituraRequest, EstrategiaValoresNulos } from "./types";
+import { salvarMedicao, getColecaoRaw } from "./db";
+import { SensorLeitura, LeituraTratada, ProcessarLeituraRequest, EstrategiaValoresNulos } from "./types";
 
 export interface ProcessarLeituraOpcoes extends ProcessarLeituraRequest {
   estrategia_valores_nulos: EstrategiaValoresNulos;
@@ -35,7 +34,6 @@ export async function processarLeituras(
     reprocessar_invalidas: opcoes.reprocessar_invalidas || false
   };
 
-  const colecaoDuplicatas = getColecaoDuplicatas();
   let estatisticas: ProcessarLeituraResult = {
     total_processadas: 0,
     total_validas: 0,
@@ -67,26 +65,10 @@ export async function processarLeituras(
 
         console.log(`[PROCESSOR] Processando ${leitura.uid} (tipo: ${tipo}):`, JSON.stringify(leitura).substring(0, 150));
 
-        // 2. Detectar duplicatas
-        const ehDuplicata = await isDuplicataAsync(leitura, colecaoDuplicatas);
-        if (ehDuplicata) {
-          await salvarRejeicao({
-            leitura_original: leitura,
-            motivo: "Duplicata detectada (uid + timestamp duplicado)",
-            timestamp: new Date()
-          });
-          estatisticas.total_rejeitadas++;
-          continue;
-        }
-
-        // 3. Tratamento de valores nulos
+        // 2. Tratamento de valores nulos
         const leituraComTratamento = tratarValoresNulos(leitura, tipo, config.estrategia_valores_nulos);
         if (!leituraComTratamento) {
-          await salvarRejeicao({
-            leitura_original: leitura,
-            motivo: "Todos os valores críticos estão nulos e estratégia é 'ignorar'",
-            timestamp: new Date()
-          });
+          console.log(`[PROCESSOR] ❌ ${leitura.uid} - Rejeitada por valores nulos`);
           estatisticas.total_rejeitadas++;
           continue;
         }
@@ -103,13 +85,7 @@ export async function processarLeituras(
         // 4. Validar ranges de valores
         const { valido, erros } = validarRange(leituraComTratamento, tipo);
         if (!valido) {
-          const motivo = `Valores fora de faixa: ${erros.join("; ")} | Data recebida: ${JSON.stringify(leituraComTratamento)}`;
-          console.log(`[PROCESSOR] ❌ Leitura ${leitura.uid} rejeitada - ${erros.join(", ")}`);
-          await salvarRejeicao({
-            leitura_original: leitura,
-            motivo: motivo,
-            timestamp: new Date()
-          });
+          console.log(`[PROCESSOR] ❌ ${leitura.uid} rejeitada - Fora de faixa: ${erros.join(", ")}`);
           estatisticas.total_rejeitadas++;
           continue;
         }
@@ -126,23 +102,22 @@ export async function processarLeituras(
           processamento: {
             timestamp: new Date(),
             status: "válido",
-            regras_aplicadas: ["deduplicacao", "validacao_range", "normalizacao"],
+            regras_aplicadas: ["validacao_range", "normalizacao"],
             interpolacoes: interpolacoes
           }
         };
 
         // 7. Persistir em tabela de leituras tratadas
+        console.log(`[PROCESSOR] ✓ Tentando salvar: ${leitura.uid} com valores:`, { 
+          raw_value: (normalizada as any).chuva_mm || (normalizada as any).co2 || (normalizada as any).umidade_solo,
+          timestamp: (normalizada as any).unixtime
+        });
         await salvarMedicao(tratada);
         estatisticas.total_validas++;
         
-        console.log(`[PROCESSOR] ✓ Leitura ${leitura.uid} processada com sucesso`);
+        console.log(`[PROCESSOR] ✓ ${leitura.uid} processada com sucesso`);
       } catch (erro) {
-        console.error(`[PROCESSOR] ✗ Erro processando ${leitura.uid}:`, erro);
-        await salvarRejeicao({
-          leitura_original: leitura,
-          motivo: `Exceção: ${String(erro)}`,
-          timestamp: new Date()
-        });
+        console.error(`[PROCESSOR] ❌ ${leitura.uid} - Exceção:`, erro instanceof Error ? erro.message : String(erro));
         estatisticas.total_rejeitadas++;
       }
 

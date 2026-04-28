@@ -9,7 +9,7 @@ dotenv.config();
 
 const app = fastify();
 const PORT = parseInt(process.env.PORT || "3000");
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://gbmedeiros00:123@api-4dsm.u46aa51.mongodb.net/?appName=API-4DSM";
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://gbmedeiros00:123@api-4dsm.u46aa51.mongodb.net/sensor_data?retryWrites=true&w=majority";
 const SCHEDULER_ATIVO = process.env.SCHEDULER_ENABLE === "true";
 const SCHEDULER_INTERVALO = parseInt(process.env.SCHEDULER_INTERVAL_MS || "60000");
 

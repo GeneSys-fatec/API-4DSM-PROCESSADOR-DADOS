@@ -8,13 +8,16 @@ export class Measurement {
   @Column({ nullable: true })
   id_parameter?: number;
 
-  @Column({ nullable: true })
+  @Column({ type: "numeric", precision: 10, scale: 2, nullable: true })
   raw_value?: number;
 
-  @Column({ nullable: true })
+  @Column({ type: "numeric", precision: 10, scale: 2, nullable: true })
+  value?: number;
+
+  @Column({ type: "numeric", precision: 10, scale: 2, nullable: true })
   decimal_2_4?: number;
 
-  @Column({ nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   timestamp?: Date;
 
   @CreateDateColumn()

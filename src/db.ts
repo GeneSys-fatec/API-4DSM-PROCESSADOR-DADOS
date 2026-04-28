@@ -3,7 +3,7 @@ import { MongoClient, Db, Collection } from "mongodb";
 import { DataSource } from "typeorm";
 import { Measurement } from "./entities/Measurement";
 import { AlertLog } from "./entities/AlertLog";
-import { LeituraTratada, LeituraRejeitada } from "./types";
+import { LeituraTratada } from "./types";
 
 let mongoClient: MongoClient | null = null;
 let mongoDb: Db | null = null;
@@ -13,10 +13,10 @@ export const AppDataSource = new DataSource({
   host: process.env.DB_HOST || "localhost",
   port: parseInt(process.env.DB_PORT || "5432"),
   username: process.env.DB_USERNAME || "postgres",
-  password: process.env.DB_PASSWORD || "postgres",
+  password: process.env.DB_PASSWORD || "root",
   database: process.env.DB_NAME || "api4dsm",
   entities: [Measurement, AlertLog],
-  synchronize: true,
+  synchronize: false,
   logging: false,
 });
 
@@ -38,16 +38,6 @@ export async function conectarMongoDB(mongoUri: string): Promise<void> {
 export function getColecaoRaw(): Collection {
   if (!mongoDb) throw new Error("MongoDB não conectado");
   return mongoDb.collection("leituras");
-}
-
-export function getColecaoDuplicatas(): Collection {
-  if (!mongoDb) throw new Error("MongoDB não conectado");
-  return mongoDb.collection("duplicatas_detectadas");
-}
-
-export function getColecaoRejeitadas(): Collection {
-  if (!mongoDb) throw new Error("MongoDB não conectado");
-  return mongoDb.collection("leituras_rejeitadas");
 }
 
 export async function desconectarMongoDB(): Promise<void> {
@@ -141,7 +131,16 @@ export async function salvarMedicao(leitura: LeituraTratada): Promise<void> {
   }
 
   if (measurements.length > 0) {
-    await AppDataSource.getRepository(Measurement).save(measurements);
+    try {
+      console.log(`[DB] Salvando ${measurements.length} measurement(s) para ${leituraData.uid}`);
+      await AppDataSource.getRepository(Measurement).save(measurements);
+      console.log(`[DB] ✓ Salvo com sucesso`);
+    } catch (erro) {
+      console.error(`[DB] ✗ Erro ao salvar measurements:`, erro);
+      throw erro;
+    }
+  } else {
+    console.log(`[DB] Nenhum measurement para salvar de ${leituraData.uid}`);
   }
 }
 
@@ -152,24 +151,4 @@ function getTipo(uid: string): string {
   return "desconhecido";
 }
 
-export async function salvarRejeicao(rejeicao: LeituraRejeitada): Promise<void> {
-  const leituraData = rejeicao.leitura_original as any;
 
-  // 1. Salvar em PostgreSQL para exibição de alertas
-  const alertLog = new AlertLog();
-  alertLog.id_start_rule = 0;
-  alertLog.login = "system";
-  alertLog.text = rejeicao.motivo;
-  alertLog.triggered_value = JSON.stringify(leituraData);
-  alertLog.triggered_at = new Date(leituraData.unixtime);
-  alertLog.status = "alert_status_error";
-
-  await AppDataSource.getRepository(AlertLog).save(alertLog);
-
-  // 2. Salvar em MongoDB para auditoria
-  const colecaoRejeitadas = getColecaoRejeitadas();
-  await colecaoRejeitadas.insertOne({
-    ...rejeicao,
-    _timestamp_rejeicao: new Date()
-  });
-}
