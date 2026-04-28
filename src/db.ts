@@ -23,12 +23,11 @@ export const AppDataSource = new DataSource({
 export async function conectarMongoDB(mongoUri: string): Promise<void> {
   mongoClient = new MongoClient(mongoUri, {
     tls: true,
-    tlsAllowInvalidCertificates: true,
+    tlsInsecure: true,
     maxPoolSize: 10,
     serverSelectionTimeoutMS: 30000,
     connectTimeoutMS: 30000,
     socketTimeoutMS: 30000,
-    retryWrites: true,
   });
   await mongoClient.connect();
   mongoDb = mongoClient.db("sensor_data");
@@ -47,85 +46,136 @@ export async function desconectarMongoDB(): Promise<void> {
   }
 }
 
+export async function verificarDuplicataPostgres(leitura: LeituraTratada): Promise<boolean> {
+  const leituraData = leitura as any;
+  const tipo = getTipo(leituraData.uid);
+  const timestamp = new Date(leituraData.unixtime * 1000);
+
+  try {
+    const repo = AppDataSource.getRepository(Measurement);
+    
+    let parametersIds: number[] = [];
+    if (tipo === "pluviometro") {
+      if (leituraData.chuva_mm != null) parametersIds.push(1);
+      if (leituraData.umidade != null) parametersIds.push(2);
+      if (leituraData.temperatura != null) parametersIds.push(9);
+    } else if (tipo === "qualidade_ar") {
+      if (leituraData.co2 != null) parametersIds.push(3);
+      if (leituraData.pm25 != null) parametersIds.push(4);
+      if (leituraData.qualidade_index != null) parametersIds.push(5);
+    } else if (tipo === "solo") {
+      if (leituraData.umidade_solo != null) parametersIds.push(6);
+      if (leituraData.ph != null) parametersIds.push(7);
+      if (leituraData.temp_solo != null) parametersIds.push(8);
+    }
+
+    if (parametersIds.length === 0) {
+      return false;
+    }
+
+    // Verifica se algum measurement com esse parâmetro e timestamp já existe
+    // Usa createQueryBuilder para suportar operações OR complexas
+    let query = repo.createQueryBuilder("m")
+      .where("m.collected_at = :timestamp", { timestamp });
+    
+    if (parametersIds.length > 0) {
+      const orConditions = parametersIds
+        .map((_, idx) => `m.id_parameter = :param${idx}`)
+        .join(" OR ");
+      
+      query = query.andWhere(`(${orConditions})`);
+      
+      parametersIds.forEach((paramId, idx) => {
+        query = query.setParameter(`param${idx}`, paramId);
+      });
+    }
+
+    const existente = await query.getOne();
+    return !!existente;
+  } catch (erro) {
+    console.error(`[DB] ✗ Erro ao verificar duplicata:`, erro);
+    return false;
+  }
+}
+
 export async function salvarMedicao(leitura: LeituraTratada): Promise<void> {
   const leituraData = leitura as any;
   const tipo = getTipo(leituraData.uid);
   const measurements: Measurement[] = [];
 
-  // Mapear cada campo do sensor para um parâmetro PostgreSQL
   if (tipo === "pluviometro") {
     if (leituraData.chuva_mm !== null && leituraData.chuva_mm !== undefined) {
       const m = new Measurement();
-      m.id_parameter = 1; // Chuva
+      m.id_parameter = 1;
       m.raw_value = leituraData.chuva_mm;
-      m.decimal_2_4 = leituraData.chuva_mm;
-      m.timestamp = new Date(leituraData.unixtime);
+      m.value = leituraData.chuva_mm;
+      m.collected_at = new Date(leituraData.unixtime * 1000);
       measurements.push(m);
     }
     if (leituraData.umidade !== null && leituraData.umidade !== undefined) {
       const m = new Measurement();
-      m.id_parameter = 2; // Umidade
+      m.id_parameter = 2;
       m.raw_value = leituraData.umidade;
-      m.decimal_2_4 = leituraData.umidade;
-      m.timestamp = new Date(leituraData.unixtime);
+      m.value = leituraData.umidade;
+      m.collected_at = new Date(leituraData.unixtime * 1000);
       measurements.push(m);
     }
     if (leituraData.temperatura !== null && leituraData.temperatura !== undefined) {
       const m = new Measurement();
-      m.id_parameter = 9; // Temperatura
+      m.id_parameter = 9;
       m.raw_value = leituraData.temperatura;
-      m.decimal_2_4 = leituraData.temperatura;
-      m.timestamp = new Date(leituraData.unixtime);
+      m.value = leituraData.temperatura;
+      m.collected_at = new Date(leituraData.unixtime * 1000);
       measurements.push(m);
     }
   } else if (tipo === "qualidade_ar") {
     if (leituraData.co2 !== null && leituraData.co2 !== undefined) {
       const m = new Measurement();
-      m.id_parameter = 3; // CO2
+      m.id_parameter = 3;
       m.raw_value = leituraData.co2;
-      m.decimal_2_4 = leituraData.co2;
-      m.timestamp = new Date(leituraData.unixtime);
+      m.value = leituraData.co2;
+      m.collected_at = new Date(leituraData.unixtime * 1000);
       measurements.push(m);
     }
     if (leituraData.pm25 !== null && leituraData.pm25 !== undefined) {
       const m = new Measurement();
-      m.id_parameter = 4; // PM2.5
+      m.id_parameter = 4;
       m.raw_value = leituraData.pm25;
-      m.decimal_2_4 = leituraData.pm25;
-      m.timestamp = new Date(leituraData.unixtime);
+      m.value = leituraData.pm25;
+      m.collected_at = new Date(leituraData.unixtime * 1000);
       measurements.push(m);
     }
     if (leituraData.qualidade_index !== null && leituraData.qualidade_index !== undefined) {
       const m = new Measurement();
-      m.id_parameter = 5; // Qualidade Index
+      m.id_parameter = 5;
       m.raw_value = leituraData.qualidade_index;
-      m.decimal_2_4 = leituraData.qualidade_index;
-      m.timestamp = new Date(leituraData.unixtime);
+      m.value = leituraData.qualidade_index;
+      m.collected_at = new Date(leituraData.unixtime * 1000);
       measurements.push(m);
     }
   } else if (tipo === "solo") {
     if (leituraData.umidade_solo !== null && leituraData.umidade_solo !== undefined) {
       const m = new Measurement();
-      m.id_parameter = 6; // Umidade Solo
+      m.id_parameter = 6;
       m.raw_value = leituraData.umidade_solo;
-      m.decimal_2_4 = leituraData.umidade_solo;
-      m.timestamp = new Date(leituraData.unixtime);
+      m.value = leituraData.umidade_solo;
+      m.collected_at = new Date(leituraData.unixtime * 1000);
       measurements.push(m);
     }
     if (leituraData.ph !== null && leituraData.ph !== undefined) {
       const m = new Measurement();
-      m.id_parameter = 7; // pH
+      m.id_parameter = 7;
       m.raw_value = leituraData.ph;
-      m.decimal_2_4 = leituraData.ph;
-      m.timestamp = new Date(leituraData.unixtime);
+      m.value = leituraData.ph;
+      m.collected_at = new Date(leituraData.unixtime * 1000);
       measurements.push(m);
     }
     if (leituraData.temp_solo !== null && leituraData.temp_solo !== undefined) {
       const m = new Measurement();
-      m.id_parameter = 8; // Temperatura Solo
+      m.id_parameter = 8;
       m.raw_value = leituraData.temp_solo;
-      m.decimal_2_4 = leituraData.temp_solo;
-      m.timestamp = new Date(leituraData.unixtime);
+      m.value = leituraData.temp_solo;
+      m.collected_at = new Date(leituraData.unixtime * 1000);
       measurements.push(m);
     }
   }

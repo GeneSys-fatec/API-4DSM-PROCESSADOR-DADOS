@@ -1,7 +1,7 @@
 import { Collection, Document } from "mongodb";
 import { validarRange, getTipo } from "./validators";
 import { normalizarLeitura, interpolarValor } from "./normalizer";
-import { salvarMedicao, getColecaoRaw } from "./db";
+import { salvarMedicao, getColecaoRaw, verificarDuplicataPostgres } from "./db";
 import { SensorLeitura, LeituraTratada, ProcessarLeituraRequest, EstrategiaValoresNulos } from "./types";
 
 export interface ProcessarLeituraOpcoes extends ProcessarLeituraRequest {
@@ -42,7 +42,6 @@ export async function processarLeituras(
   };
 
   try {
-    // Constrói filtro para MongoDB
     const filtro = construirFiltro(config);
 
     const leituras = await colecaoRaw
@@ -57,7 +56,6 @@ export async function processarLeituras(
       estatisticas.total_processadas++;
 
       try {
-        // 1. Validar tipo de sensor
         const tipo = getTipo(leitura.uid);
         if (tipo === "desconhecido") {
           throw new Error("Tipo de sensor desconhecido");
@@ -65,7 +63,6 @@ export async function processarLeituras(
 
         console.log(`[PROCESSOR] Processando ${leitura.uid} (tipo: ${tipo}):`, JSON.stringify(leitura).substring(0, 150));
 
-        // 2. Tratamento de valores nulos
         const leituraComTratamento = tratarValoresNulos(leitura, tipo, config.estrategia_valores_nulos);
         if (!leituraComTratamento) {
           console.log(`[PROCESSOR] ❌ ${leitura.uid} - Rejeitada por valores nulos`);
@@ -76,13 +73,11 @@ export async function processarLeituras(
         let interpolacoes: string[] = [];
         if (config.estrategia_valores_nulos === "interpolar") {
           const resultado = tentarInterpolacoes(leituraComTratamento, tipo);
-          // Atualiza leitura com resultado da interpolação
           Object.assign(leituraComTratamento, resultado.leitura);
           interpolacoes = resultado.interpolacoes;
           estatisticas.total_interpoladas += interpolacoes.length;
         }
 
-        // 4. Validar ranges de valores
         const { valido, erros } = validarRange(leituraComTratamento, tipo);
         if (!valido) {
           console.log(`[PROCESSOR] ❌ ${leitura.uid} rejeitada - Fora de faixa: ${erros.join(", ")}`);
@@ -90,13 +85,11 @@ export async function processarLeituras(
           continue;
         }
 
-        // 5. Normalizar unidades
         let normalizada = leituraComTratamento;
         if (config.normalizar_unidades) {
           normalizada = normalizarLeitura(leituraComTratamento, tipo);
         }
 
-        // 6. Criar registro tratado
         const tratada: LeituraTratada = {
           ...normalizada,
           processamento: {
@@ -107,7 +100,14 @@ export async function processarLeituras(
           }
         };
 
-        // 7. Persistir em tabela de leituras tratadas
+        // 7. Verificar se já existe no PostgreSQL (duplicata)
+        const isDuplicata = await verificarDuplicataPostgres(tratada);
+        if (isDuplicata) {
+          console.log(`[PROCESSOR] ❌ ${leitura.uid} rejeitada - Já existe no PostgreSQL (duplicata)`);
+          estatisticas.total_rejeitadas++;
+          continue;
+        }
+
         console.log(`[PROCESSOR] ✓ Tentando salvar: ${leitura.uid} com valores:`, { 
           raw_value: (normalizada as any).chuva_mm || (normalizada as any).co2 || (normalizada as any).umidade_solo,
           timestamp: (normalizada as any).unixtime
@@ -121,7 +121,6 @@ export async function processarLeituras(
         estatisticas.total_rejeitadas++;
       }
 
-      // Marca como processada no MongoDB
       await colecaoRaw.updateOne({ _id: doc._id }, { $set: { _processada: true } });
     }
 
@@ -137,12 +136,7 @@ export async function processarLeituras(
 
 
 function construirFiltro(config: ProcessarLeituraOpcoes): Document {
-  // Start fresh - reprocess everything to diagnose
-  const filtro: Document = {};  // Empty filter = no _processada check
-
-  if (config.reprocessar_invalidas) {
-    delete filtro._processada;
-  }
+  const filtro: Document = {};
 
   if (config.tipos_sensores && config.tipos_sensores.length > 0) {
     const uidsPattern = config.tipos_sensores.map(tipo => {
@@ -183,16 +177,13 @@ function tratarValoresNulos(
 
   switch (estrategia) {
     case "ignorar":
-      // Se há nulos, rejeita
       console.log(`[PROCESSOR] Leitura ${leitura.uid} tem valores nulos em: ${valoresNulos.join(", ")} - rejeitada`);
       return null;
 
     case "registrar_nulo":
-      // Mantém como está (com nulos)
       return leitura;
 
     case "interpolar":
-      // Marca para interpolação posterior
       return leitura;
 
     default:
@@ -200,9 +191,6 @@ function tratarValoresNulos(
   }
 }
 
-/**
- * Tenta interpolar valores nulos em campos adjacentes
- */
 function tentarInterpolacoes(
   leitura: SensorLeitura,
   tipo: string
@@ -213,8 +201,6 @@ function tentarInterpolacoes(
 
   for (const campo of campos) {
     if (leituraData[campo] === null || leituraData[campo] === undefined) {
-      // Em produção, buscar valores adjacentes do Mongo
-      // Por enquanto, apenas marca como interpolado
       interpolacoes.push(campo);
     }
   }
@@ -222,9 +208,6 @@ function tentarInterpolacoes(
   return { leitura, interpolacoes };
 }
 
-/**
- * Retorna campos esperados para cada tipo de sensor
- */
 function obterCamposEsperados(tipo: string): string[] {
   switch (tipo) {
     case "pluviometro":

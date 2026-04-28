@@ -14,15 +14,9 @@ export class Measurement {
   @Column({ type: "numeric", precision: 10, scale: 2, nullable: true })
   value?: number;
 
-  @Column({ type: "numeric", precision: 10, scale: 2, nullable: true })
-  decimal_2_4?: number;
+  @Column({ name: "collected_at", type: "timestamptz" })
+  collected_at!: Date;
 
-  @Column({ type: "timestamp", nullable: true })
-  timestamp?: Date;
-
-  @CreateDateColumn()
-  collected_at?: Date;
-
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "received_at", type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
   received_at?: Date;
 }
