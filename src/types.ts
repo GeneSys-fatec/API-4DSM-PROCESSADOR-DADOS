@@ -44,16 +44,14 @@ export interface LeituraRejeitada {
 export type EstrategiaValoresNulos = "ignorar" | "interpolar" | "registrar_nulo";
 
 export interface ProcessarLeituraRequest {
-  // Filtros de seleção
   tipos_sensores?: ("pluviometro" | "qualidade_ar" | "solo")[];
   uids?: string[];
-  data_inicio?: number; // timestamp unix
-  data_fim?: number; // timestamp unix
+  data_inicio?: number;
+  data_fim?: number;
   
-  // Configurações de processamento
-  estrategia_valores_nulos?: EstrategiaValoresNulos; // default: "registrar_nulo"
-  normalizar_unidades?: boolean; // default: true
-  limite_leituras?: number; // default: 100
+  estrategia_valores_nulos?: EstrategiaValoresNulos;
+  normalizar_unidades?: boolean;
+  limite_leituras?: number;
   
   // Flags
   reprocessar_invalidas?: boolean; // default: false - reprocessa leituras anteriormente rejeitadas

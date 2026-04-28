@@ -65,7 +65,7 @@ export async function processarLeituras(
 
         const leituraComTratamento = tratarValoresNulos(leitura, tipo, config.estrategia_valores_nulos);
         if (!leituraComTratamento) {
-          console.log(`[PROCESSOR] ❌ ${leitura.uid} - Rejeitada por valores nulos`);
+          console.log(`[PROCESSOR] ${leitura.uid} - Rejeitada por valores nulos`);
           estatisticas.total_rejeitadas++;
           continue;
         }
@@ -80,7 +80,7 @@ export async function processarLeituras(
 
         const { valido, erros } = validarRange(leituraComTratamento, tipo);
         if (!valido) {
-          console.log(`[PROCESSOR] ❌ ${leitura.uid} rejeitada - Fora de faixa: ${erros.join(", ")}`);
+          console.log(`[PROCESSOR] ${leitura.uid} rejeitada - Fora de faixa: ${erros.join(", ")}`);
           estatisticas.total_rejeitadas++;
           continue;
         }
@@ -103,21 +103,21 @@ export async function processarLeituras(
         // 7. Verificar se já existe no PostgreSQL (duplicata)
         const isDuplicata = await verificarDuplicataPostgres(tratada);
         if (isDuplicata) {
-          console.log(`[PROCESSOR] ❌ ${leitura.uid} rejeitada - Já existe no PostgreSQL (duplicata)`);
+          console.log(`[PROCESSOR] ${leitura.uid} rejeitada - Já existe no PostgreSQL (duplicata)`);
           estatisticas.total_rejeitadas++;
           continue;
         }
 
-        console.log(`[PROCESSOR] ✓ Tentando salvar: ${leitura.uid} com valores:`, { 
+        console.log(`[PROCESSOR] Tentando salvar: ${leitura.uid} com valores:`, { 
           raw_value: (normalizada as any).chuva_mm || (normalizada as any).co2 || (normalizada as any).umidade_solo,
           timestamp: (normalizada as any).unixtime
         });
         await salvarMedicao(tratada);
         estatisticas.total_validas++;
         
-        console.log(`[PROCESSOR] ✓ ${leitura.uid} processada com sucesso`);
+        console.log(`[PROCESSOR] ${leitura.uid} processada com sucesso`);
       } catch (erro) {
-        console.error(`[PROCESSOR] ❌ ${leitura.uid} - Exceção:`, erro instanceof Error ? erro.message : String(erro));
+        console.error(`[PROCESSOR] ${leitura.uid} - Exceção:`, erro instanceof Error ? erro.message : String(erro));
         estatisticas.total_rejeitadas++;
       }
 

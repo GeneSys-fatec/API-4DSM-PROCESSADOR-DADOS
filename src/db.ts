@@ -73,8 +73,6 @@ export async function verificarDuplicataPostgres(leitura: LeituraTratada): Promi
       return false;
     }
 
-    // Verifica se algum measurement com esse parâmetro e timestamp já existe
-    // Usa createQueryBuilder para suportar operações OR complexas
     let query = repo.createQueryBuilder("m")
       .where("m.collected_at = :timestamp", { timestamp });
     
@@ -93,7 +91,7 @@ export async function verificarDuplicataPostgres(leitura: LeituraTratada): Promi
     const existente = await query.getOne();
     return !!existente;
   } catch (erro) {
-    console.error(`[DB] ✗ Erro ao verificar duplicata:`, erro);
+    console.error(`[DB] Erro ao verificar duplicata:`, erro);
     return false;
   }
 }
@@ -184,9 +182,9 @@ export async function salvarMedicao(leitura: LeituraTratada): Promise<void> {
     try {
       console.log(`[DB] Salvando ${measurements.length} measurement(s) para ${leituraData.uid}`);
       await AppDataSource.getRepository(Measurement).save(measurements);
-      console.log(`[DB] ✓ Salvo com sucesso`);
+      console.log(`[DB] Salvo com sucesso`);
     } catch (erro) {
-      console.error(`[DB] ✗ Erro ao salvar measurements:`, erro);
+      console.error(`[DB] Erro ao salvar measurements:`, erro);
       throw erro;
     }
   } else {

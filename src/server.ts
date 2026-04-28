@@ -17,16 +17,16 @@ const start = async () => {
   try {
   
     await AppDataSource.initialize();
-    console.log("[SERVER] ✓ PostgreSQL conectado");
+    console.log("[SERVER] PostgreSQL conectado");
     
     await conectarMongoDB(MONGO_URI);
-    console.log("[SERVER] ✓ MongoDB conectado");
+    console.log("[SERVER] MongoDB conectado");
     
     await app.register(routes);
     
     // Inicia scheduler se habilitado
     if (SCHEDULER_ATIVO) {
-      console.log(`[SERVER] ✓ Scheduler habilitado (intervalo: ${SCHEDULER_INTERVALO}ms)`);
+      console.log(`[SERVER] Scheduler habilitado (intervalo: ${SCHEDULER_INTERVALO}ms)`);
       await iniciarScheduler({
         intervalo_ms: SCHEDULER_INTERVALO,
         opcoes_processamento: {
@@ -40,15 +40,15 @@ const start = async () => {
     }
     
     await app.listen({ port: PORT, host: "0.0.0.0" });
-    console.log(`[SERVER] ✓ Servidor rodando em http://localhost:${PORT}`);
+    console.log(`[SERVER] Servidor rodando em http://localhost:${PORT}`);
   } catch (erro) {
-    console.error("[SERVER] ✗ Erro ao iniciar:", erro);
+    console.error("[SERVER] Erro ao iniciar:", erro);
     process.exit(1);
   }
 };
 
 process.on("SIGINT", async () => {
-  console.log("\n[SERVER] 🛑 Encerrando...");
+  console.log("\n[SERVER] Encerrando...");
   
   try {
     if (SCHEDULER_ATIVO) {
@@ -62,10 +62,10 @@ process.on("SIGINT", async () => {
       await AppDataSource.destroy();
     }
     
-    console.log("[SERVER] ✓ Encerrado com sucesso");
+    console.log("[SERVER] Encerrado com sucesso");
     process.exit(0);
   } catch (erro) {
-    console.error("[SERVER] ✗ Erro ao encerrar:", erro);
+    console.error("[SERVER] Erro ao encerrar:", erro);
     process.exit(1);
   }
 });

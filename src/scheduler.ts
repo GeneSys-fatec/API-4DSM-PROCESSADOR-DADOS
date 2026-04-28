@@ -25,14 +25,14 @@ let ultimaExecucao: Date | undefined = undefined;
 
 export async function iniciarScheduler(config: Partial<SchedulerConfig> = {}): Promise<void> {
   if (isRunning) {
-    console.log("[SCHEDULER] ⚠️ Scheduler já está rodando!");
+    console.log("[SCHEDULER] Scheduler já está rodando!");
     return;
   }
 
   const configMerged = { ...DEFAULT_CONFIG, ...config };
   isRunning = true;
 
-  console.log(`[SCHEDULER] ✓ Iniciado com intervalo de ${configMerged.intervalo_ms}ms (${(configMerged.intervalo_ms / 1000).toFixed(1)}s)`);
+  console.log(`[SCHEDULER] Iniciado com intervalo de ${configMerged.intervalo_ms}ms (${(configMerged.intervalo_ms / 1000).toFixed(1)}s)`);
 
   await executarProcessamento(configMerged);
 
@@ -43,7 +43,7 @@ export async function iniciarScheduler(config: Partial<SchedulerConfig> = {}): P
 
 export function pararScheduler(): void {
   if (!isRunning) {
-    console.log("[SCHEDULER] ⚠️ Scheduler não está rodando!");
+    console.log("[SCHEDULER] Scheduler não está rodando!");
     return;
   }
 
@@ -53,7 +53,7 @@ export function pararScheduler(): void {
   }
 
   isRunning = false;
-  console.log("[SCHEDULER] ⏸️ Scheduler parado");
+  console.log("[SCHEDULER] Scheduler parado");
 }
 
 export function statusScheduler(): {
@@ -72,7 +72,7 @@ async function executarProcessamento(config: SchedulerConfig): Promise<void> {
   const inicio = Date.now();
   
   try {
-    console.log(`[SCHEDULER] 🔄 Acionando processamento...`);
+    console.log(`[SCHEDULER] Acionando processamento...`);
     
     const colecaoRaw = getColecaoRaw();
     const resultado = await processarLeituras(colecaoRaw, config.opcoes_processamento);
@@ -80,14 +80,14 @@ async function executarProcessamento(config: SchedulerConfig): Promise<void> {
     ultimaExecucao = new Date();
     const duracao = Date.now() - inicio;
 
-    console.log(`[SCHEDULER] ✓ Processamento concluído em ${duracao}ms:`);
-    console.log(`  📊 Total: ${resultado.total_processadas}`);
-    console.log(`  ✅ Válidas: ${resultado.total_validas}`);
-    console.log(`  ❌ Rejeitadas: ${resultado.total_rejeitadas}`);
-    console.log(`  🔄 Interpoladas: ${resultado.total_interpoladas}`);
+    console.log(`[SCHEDULER] Processamento concluído em ${duracao}ms:`);
+    console.log(`  Total: ${resultado.total_processadas}`);
+    console.log(`  Válidas: ${resultado.total_validas}`);
+    console.log(`  Rejeitadas: ${resultado.total_rejeitadas}`);
+    console.log(`  Interpoladas: ${resultado.total_interpoladas}`);
   } catch (erro) {
     const duracao = Date.now() - inicio;
-    console.error(`[SCHEDULER] ✗ Erro no processamento (${duracao}ms):`, erro);
+    console.error(`[SCHEDULER] Erro no processamento (${duracao}ms):`, erro);
   }
 }
 
