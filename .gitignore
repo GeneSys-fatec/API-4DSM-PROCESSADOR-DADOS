@@ -1,0 +1,19 @@
+.venv/
+venv/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# pytest cache
+.pytest_cache/
+
+# Distribution / build artifacts
+dist/
+build/
+*.egg-info/
+
+# Logs and environment files
+*.log
+.env
