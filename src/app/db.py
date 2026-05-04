@@ -169,14 +169,37 @@ class Database:
         if frame.empty:
             return 0
 
+        mapping = {}
+        fallback_mapping = {}
+        with self.cursor() as cursor:
+            cursor.execute("""
+                SELECT s."idDatalogger", pt.json_key, p.id
+                FROM parameters p
+                JOIN stations s ON p.id_station = s.id
+                JOIN "parameterTypes" pt ON p.id_parameter_type = pt.id
+            """)
+            for station_uid, param_key, param_id in cursor.fetchall():
+                mapping[(station_uid, param_key)] = param_id
+                
+                prefix = station_uid.split('-')[0]
+                fallback_mapping[(prefix, param_key)] = param_id
+
         records = []
         for row in frame.to_dict(orient="records"):
+            sensor_uid = row["sensor_uid"]
+            param_name = row["parameter_name"]
+            
+            real_param_id = mapping.get((sensor_uid, param_name))
+            if real_param_id is None:
+                prefix = sensor_uid.split('-')[0]
+                real_param_id = fallback_mapping.get((prefix, param_name))
+
             records.append(
                 (
-                    row["sensor_uid"],
+                    sensor_uid,
                     row["sensor_type"],
-                    _parameter_id_for_name(row["parameter_name"]),
-                    row["parameter_name"],
+                    real_param_id,  
+                    param_name,
                     _decimal_or_none(row.get("raw_value")),
                     _decimal_or_none(row.get("value")),
                     _to_datetime(row["collected_at"]),
@@ -205,7 +228,6 @@ class Database:
             execute_values(cursor, statement, records, page_size=500)
         return len(records)
 
-
 def _decimal_or_none(value: object) -> Decimal | None:
     if value is None or pd.isna(value):
         return None
@@ -233,21 +255,5 @@ def _column_exists(cursor, table_name: str, column_name: str) -> bool:
         (table_name, column_name),
     )
     return cursor.fetchone() is not None
-
-
-def _parameter_id_for_name(parameter_name: str) -> int | None:
-    mapping = {
-        "chuva_mm": 1,
-        "umidade": 2,
-        "co2": 3,
-        "pm25": 4,
-        "qualidade_index": 5,
-        "umidade_solo": 6,
-        "ph": 7,
-        "temp_solo": 8,
-        "temperatura": 9,
-    }
-    return mapping.get(parameter_name)
-
 
 db = Database()
