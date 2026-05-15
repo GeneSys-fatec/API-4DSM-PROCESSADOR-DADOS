@@ -175,8 +175,8 @@ class Database:
             cursor.execute("""
                 SELECT s."idDatalogger", pt.json_key, p.id
                 FROM parameters p
-                JOIN stations s ON p.id_station = s.id
-                JOIN "parameterTypes" pt ON p.id_parameter_type = pt.id
+                JOIN stations s ON p."idStation" = s.id
+                JOIN "parameterTypes" pt ON p."idTypeParam" = pt.id
             """)
             for station_uid, param_key, param_id in cursor.fetchall():
                 mapping[(station_uid, param_key)] = param_id
