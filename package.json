@@ -1,0 +1,30 @@
+{
+  "name": "api-4dsm-processador-dados",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "API em Python para processar leituras de sensores, persistindo os dados válidos no PostgreSQL e removendo os documentos de origem do MongoDB após o envio.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GeneSys-fatec/API-4DSM-PROCESSADOR-DADOS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/GeneSys-fatec/API-4DSM-PROCESSADOR-DADOS/issues"
+  },
+  "homepage": "https://github.com/GeneSys-fatec/API-4DSM-PROCESSADOR-DADOS#readme",
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "husky": "^9.1.7"
+  }
+}

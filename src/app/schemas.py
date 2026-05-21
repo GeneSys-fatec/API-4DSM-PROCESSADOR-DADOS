@@ -4,7 +4,6 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-
 SensorKind = Literal["pluviometro", "qualidade_ar", "solo"]
 NullStrategy = Literal["ignore", "keep_null", "interpolate"]
 
