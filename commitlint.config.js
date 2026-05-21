@@ -5,6 +5,10 @@ export default {
       headerCorrespondence: ['type', 'scope', 'subject']
     }
   },
+  
+  defaultIgnores: true,
+  ignores: [(commit) => commit.includes("Merge")],
+  
   rules: {
     'type-enum': [
       2, 
