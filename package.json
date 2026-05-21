@@ -1,6 +1,7 @@
 {
   "name": "api-4dsm-processador-dados",
   "version": "1.0.0",
+  "type": "module",
   "description": "API em Python para processar leituras de sensores, persistindo os dados válidos no PostgreSQL e removendo os documentos de origem do MongoDB após o envio.",
   "main": "index.js",
   "directories": {
