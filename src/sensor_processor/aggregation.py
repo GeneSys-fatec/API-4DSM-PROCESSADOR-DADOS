@@ -39,10 +39,9 @@ def aggregate_measurements(
             if column not in excluded_columns and pd.api.types.is_numeric_dtype(frame[column])
         ]
 
-        grouped = (
-            frame.groupby(["uid", "sensor_type", "period_start"], dropna=False)[value_columns]
-            .agg(["mean", "max", "min", "count"])
-        )
+        grouped = frame.groupby(["uid", "sensor_type", "period_start"], dropna=False)[
+            value_columns
+        ].agg(["mean", "max", "min", "count"])
         grouped.columns = [f"{value}_{agg}" for value, agg in grouped.columns.to_flat_index()]
 
         result = grouped.reset_index()
@@ -53,6 +52,6 @@ def aggregate_measurements(
             period=config.period,
             total_groups=len(result),
         )
-    except Exception as exc: 
+    except Exception as exc:
         logger.exception("Falha ao agregar as medições: %s", exc)
         raise
