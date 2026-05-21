@@ -10,7 +10,7 @@ from sensor_processor.cleaning import clean_measurements
 from sensor_processor.models import ProcessingConfig
 
 from .db import db
-from .schemas import ProcessRequest, ProcessingStats
+from .schemas import ProcessingStats, ProcessRequest
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,9 @@ def build_mongo_filter(request: ProcessRequest) -> dict:
             "qualidade_ar": "QUALIDADE_AR",
             "solo": "SOLO",
         }
-        mongo_filter["uid"] = {"$regex": "|".join(patterns[item] for item in request.tipos_sensores)}
+        mongo_filter["uid"] = {
+            "$regex": "|".join(patterns[item] for item in request.tipos_sensores)
+        }
 
     if request.uids:
         mongo_filter["uid"] = {"$in": request.uids}
@@ -78,7 +80,7 @@ def process_readings(request: ProcessRequest) -> ProcessOutcome:
     cleaned = clean_measurements(raw_documents, clean_config)
     measurement_rows = _explode_measurements(cleaned.clean_frame)
 
-    total_saved_measurements = db.save_measurements(measurement_rows)
+    db.save_measurements(measurement_rows)
     raw_ids = list(cleaned.clean_frame.get("_id", []))
     try:
         db.delete_raw_sent(raw_ids)
@@ -143,5 +145,3 @@ def _explode_measurements(frame: pd.DataFrame) -> pd.DataFrame:
             )
 
     return pd.DataFrame(rows)
-
-
