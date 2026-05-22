@@ -1,10 +1,10 @@
-name: CI/CD
+name: CI/CD Processador
 
 on:
   pull_request:
-    branches: ["develop", "release", "master" ]
+    branches: [ "develop", "release", "master" ]
   push:
-    branches: ["develop", "release", "master" ]
+    branches: [ "develop", "release", "master" ]
 
 concurrency:
   group: ci-pr-${{ github.ref }}
@@ -15,31 +15,27 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
-
+        python-version: [ "3.11", "3.12" ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-
       - name: Install dependencies
         run: pip install -r requirements.txt
-
       - name: Lint
         run: |
-          pip install ruff  
-          ruff check .     
-          ruff format --check . 
-
+          pip install ruff
+          ruff check .
+          ruff format --check .
       - name: Test
         run: pytest tests/ -v --tb=short
+
   commitlint:
     runs-on: ubuntu-latest
     steps:
@@ -49,3 +45,55 @@ jobs:
           fetch-depth: 0
       - name: Validate commits with commitlint
         uses: wagoid/commitlint-github-action@v6
+
+  deploy-release:
+    runs-on: ubuntu-latest
+    needs: [ validate, commitlint ]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/release'
+    environment: release
+    steps:
+      - name: Deploy Processador to EC2 (release)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROCESSADOR_RELEASE_EC2_HOST }}
+          username: ${{ secrets.PROCESSADOR_RELEASE_EC2_USER }}
+          key: ${{ secrets.PROCESSADOR_RELEASE_EC2_SSH_KEY }}
+          script: |
+            cd ~/API-4DSM-PROCESSADOR-DADOS
+            git fetch --all
+            git checkout release
+            git reset --hard origin/release
+            source .venv/bin/activate
+            pip install -r requirements.txt
+            pm2 describe processador > /dev/null 2>&1 \
+              && pm2 restart processador --update-env \
+              || pm2 start /home/${{ secrets.PROCESSADOR_RELEASE_EC2_USER }}/API-4DSM-PROCESSADOR-DADOS/.venv/bin/python \
+                --name "processador" \
+                -- /home/${{ secrets.PROCESSADOR_RELEASE_EC2_USER }}/API-4DSM-PROCESSADOR-DADOS/src/main.py
+            pm2 save
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [ validate, commitlint ]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    environment: production
+    steps:
+      - name: Deploy Processador to EC2 (production)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROCESSADOR_PROD_EC2_HOST }}
+          username: ${{ secrets.PROCESSADOR_PROD_EC2_USER }}
+          key: ${{ secrets.PROCESSADOR_PROD_EC2_SSH_KEY }}
+          script: |
+            cd ~/API-4DSM-PROCESSADOR-DADOS
+            git fetch --all
+            git checkout master
+            git reset --hard origin/master
+            source .venv/bin/activate
+            pip install -r requirements.txt
+            pm2 describe processador > /dev/null 2>&1 \
+              && pm2 restart processador --update-env \
+              || pm2 start /home/${{ secrets.PROCESSADOR_PROD_EC2_USER }}/API-4DSM-PROCESSADOR-DADOS/.venv/bin/python \
+                --name "processador" \
+                -- /home/${{ secrets.PROCESSADOR_PROD_EC2_USER }}/API-4DSM-PROCESSADOR-DADOS/src/main.py
+            pm2 save
