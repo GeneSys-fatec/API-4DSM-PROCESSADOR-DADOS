@@ -171,9 +171,9 @@ class Database:
             return
         self.mongo_collection.delete_many({"_id": {"$in": raw_ids}})
 
-    def save_measurements(self, frame: pd.DataFrame) -> int:
+    def save_measurements(self, frame: pd.DataFrame) -> list[tuple]:
         if frame.empty:
-            return 0
+            return []
 
         mapping = {}
         fallback_mapping = {}
@@ -232,7 +232,7 @@ class Database:
 
         with self.cursor() as cursor:
             execute_values(cursor, statement, records, page_size=500)
-        return len(records)
+        return records
 
 
 def _decimal_or_none(value: object) -> Decimal | None:
