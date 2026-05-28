@@ -12,7 +12,7 @@ from app.schemas import (
 def test_schemas():
     req = ProcessRequest(tipos_sensores=["pluviometro"])
     assert req.tipos_sensores == ["pluviometro"]
-    
+
     stats = ProcessingStats(
         total_processadas=10,
         total_validas=8,
@@ -23,10 +23,10 @@ def test_schemas():
         tempo_ms=150,
     )
     assert stats.total_validas == 8
-    
+
     resp = ProcessResponse(sucesso=True, mensagem="ok", estatisticas=stats)
     assert resp.sucesso is True
-    
+
     status = SchedulerStatus(rodando=True)
     s_resp = SchedulerResponse(sucesso=True, mensagem="ok", status=status)
     assert s_resp.mensagem == "ok"

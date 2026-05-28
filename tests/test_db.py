@@ -162,7 +162,7 @@ def test_save_measurements_data(mock_execute_values):
     db_inst.postgres_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_cursor.fetchall.return_value = [("UID-1", "chuva_mm", 10), ("PREFIX", "temp", 20)]
-    
+
     df = pd.DataFrame(
         [
             {
@@ -183,7 +183,7 @@ def test_save_measurements_data(mock_execute_values):
             },
         ]
     )
-    
+
     with patch.object(Database, "cursor") as mock_cursor_cm:
         mock_cursor_cm.return_value.__enter__.return_value = mock_cursor
         records = db_inst.save_measurements(df)
@@ -195,7 +195,7 @@ def test_save_measurements_data(mock_execute_values):
 def test_ensure_schema():
     db_inst = Database()
     mock_cursor = MagicMock()
-    
+
     with patch("app.db._column_exists", side_effect=[True, False]):
         with patch.object(Database, "cursor") as mock_cursor_cm:
             mock_cursor_cm.return_value.__enter__.return_value = mock_cursor
@@ -222,9 +222,10 @@ def test_ensure_measurements_conflict_target():
 
 def test_import_failures():
     import app.db
+
     with patch.dict(sys.modules, {"psycopg2": None, "psycopg2.extras": None, "pymongo": None}):
         importlib.reload(app.db)
         assert app.db.psycopg2 is None
         assert app.db.MongoClient is None
-    
+
     importlib.reload(app.db)

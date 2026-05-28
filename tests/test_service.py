@@ -20,7 +20,7 @@ def test_build_mongo_filter():
     assert filter1["unixtime"]["$gte"] == 100
     assert filter1["unixtime"]["$lte"] == 200
     assert filter1["_processada"] == {"$ne": True}
-    
+
     req2 = ProcessRequest(uids=["UID-1"], reprocessar_invalidas=True)
     filter2 = build_mongo_filter(req2)
     assert filter2["uid"] == {"$in": ["UID-1"]}
@@ -43,7 +43,7 @@ def test_process_readings_empty(mock_trigger, mock_clean, mock_db):
 @patch("app.service.trigger_alert_evaluation")
 def test_process_readings_with_data(mock_trigger, mock_clean, mock_db):
     mock_db.fetch_raw_readings.return_value = [{"_id": "1", "uid": "UID-1", "unixtime": 1000}]
-    
+
     clean_mock = MagicMock()
     clean_mock.clean_frame = pd.DataFrame(
         [
@@ -62,14 +62,14 @@ def test_process_readings_with_data(mock_trigger, mock_clean, mock_db):
     clean_mock.total_rejected = 0
     clean_mock.total_duplicates = 0
     mock_clean.return_value = clean_mock
-    
+
     mock_db.save_measurements.return_value = [
         ("UID-1", "pluviometro", 1, "chuva_mm", 10.0, 10.0, pd.Timestamp("2020-01-01T00:00:00Z"))
     ]
-    
+
     req = ProcessRequest()
     outcome = process_readings(req)
-    
+
     assert outcome.stats.total_validas == 1
     mock_trigger.assert_called_once_with(1, 10.0, pd.Timestamp("2020-01-01T00:00:00Z"))
     mock_db.delete_raw_sent.assert_called_once_with(["1"])
@@ -90,9 +90,9 @@ def test_process_readings_delete_exception(mock_clean, mock_db):
     clean_mock.total_duplicates = 0
     mock_clean.return_value = clean_mock
     mock_db.save_measurements.return_value = []
-    
+
     mock_db.delete_raw_sent.side_effect = Exception("delete error")
-    
+
     req = ProcessRequest()
     outcome = process_readings(req)
     assert outcome.stats.total_validas == 1
