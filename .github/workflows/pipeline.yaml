@@ -2,9 +2,9 @@ name: CI/CD Processador
 
 on:
   pull_request:
-    branches: ["release", "master"]
+    branches: ["develop", "release", "master"]
   push:
-    branches: ["release", "master"]
+    branches: ["develop", "release", "master"]
 
 concurrency:
   group: ci-pr-${{ github.ref }}
