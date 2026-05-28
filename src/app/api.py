@@ -45,7 +45,7 @@ def health() -> dict[str, str]:
     "/processar",
     response_model=ProcessResponse,
     summary="Processar leituras",
-    description="Processa leituras pendentes da collection MongoDB e persiste os resultados no PostgreSQL.",
+    description="Processa leituras pendentes no banco.",
 )
 def process_endpoint(request: ProcessRequest) -> ProcessResponse:
     try:
@@ -64,7 +64,7 @@ def process_endpoint(request: ProcessRequest) -> ProcessResponse:
     "/scheduler/iniciar",
     response_model=SchedulerResponse,
     summary="Iniciar o agendador",
-    description="Inicia o scheduler de processamento. Aceita um payload opcional para configurar o processamento inicial.",
+    description="Inicia o scheduler com configuração opcional.",
 )
 async def start_scheduler(request: ProcessRequest | None = Body(default=None)) -> SchedulerResponse:
     await scheduler.start(request)
@@ -109,7 +109,7 @@ async def restart_scheduler() -> SchedulerResponse:
     "/scheduler/status",
     response_model=SchedulerStatus,
     summary="Status do agendador",
-    description="Retorna informações sobre o estado atual do scheduler (rodando, última e próxima execução).",
+    description="Retorna o estado atual do scheduler.",
 )
 def scheduler_status() -> SchedulerStatus:
     return scheduler.snapshot()
