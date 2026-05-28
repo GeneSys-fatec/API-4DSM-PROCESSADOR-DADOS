@@ -54,11 +54,12 @@ def test_db_close():
 @patch("app.db.psycopg2")
 @patch.object(Database, "ensure_schema")
 def test_db_connect_success(mock_ensure_schema, mock_psycopg2, mock_mongo):
-    db_inst = Database()
-    db_inst.connect()
-    assert db_inst.mongo_client is not None
-    assert db_inst.postgres_conn is not None
-    mock_ensure_schema.assert_called_once()
+    with patch("app.db.settings.mongo_uri", "mock"), patch("app.db.settings.db_name", "mock"):
+        db_inst = Database()
+        db_inst.connect()
+        assert db_inst.mongo_client is not None
+        assert db_inst.postgres_conn is not None
+        mock_ensure_schema.assert_called_once()
 
 
 def test_db_connect_mongo_missing():
