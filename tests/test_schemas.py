@@ -20,7 +20,7 @@ def test_schemas():
         total_interpoladas=1,
         total_duplicatas=0,
         total_agregadas=0,
-        tempo_ms=150
+        tempo_ms=150,
     )
     assert stats.total_validas == 8
     

@@ -28,6 +28,7 @@ async def test_scheduler_start_and_stop():
     
     await scheduler.stop()
 
+
 @pytest.mark.asyncio
 async def test_scheduler_restart():
     scheduler = ProcessingScheduler(interval_ms=1000)
@@ -35,12 +36,14 @@ async def test_scheduler_restart():
     assert scheduler.state.running
     await scheduler.stop()
 
+
 @pytest.mark.asyncio
 @patch("app.scheduler.process_readings")
 async def test_scheduler_run_once(mock_process):
     scheduler = ProcessingScheduler(interval_ms=1000)
     await scheduler.run_once()
     mock_process.assert_called_once()
+
 
 @pytest.mark.asyncio
 @patch("app.scheduler.AsyncIOScheduler")

@@ -16,12 +16,14 @@ def test_send_alert_evaluation_success(mock_post):
     assert payload["measuredValue"] == 20.5
     assert payload["occurredAt"] == "2023-01-01T12:00:00Z"
 
+
 @patch("app.alerts.requests.post", side_effect=Exception("timeout"))
 @patch("app.alerts.logger.warning")
 def test_send_alert_evaluation_exception(mock_logger, mock_post):
     dt = datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     _send_alert_evaluation(1, 20.5, dt)
     mock_logger.assert_called_once()
+
 
 @patch("app.alerts._executor.submit")
 def test_trigger_alert_evaluation(mock_submit):

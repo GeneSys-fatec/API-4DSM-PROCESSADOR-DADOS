@@ -67,7 +67,9 @@ def clean_measurements(
         invalid_type_mask = working["sensor_type"].eq("unknown")
         if invalid_type_mask.any():
             rejected_frames.append(
-                working.loc[invalid_type_mask].assign(reject_reason="unknown_sensor_type")
+                working.loc[invalid_type_mask].assign(
+                    reject_reason="unknown_sensor_type"
+                )
             )
             working = working.loc[~invalid_type_mask].copy()
 

@@ -82,7 +82,7 @@ def process_readings(request: ProcessRequest) -> ProcessOutcome:
     measurement_rows = _explode_measurements(cleaned.clean_frame)
 
     saved_records = db.save_measurements(measurement_rows)
-    
+
     for record in saved_records:
         param_id = record[2]
         value = record[5]
