@@ -19,9 +19,7 @@ def _send_alert_evaluation(parameter_id: int, value: float, collected_at: dateti
         payload = {
             "parameterId": parameter_id,
             "measuredValue": float(value),
-            "occurredAt": collected_at.astimezone(timezone.utc)
-            .isoformat()
-            .replace("+00:00", "Z"),
+            "occurredAt": collected_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
 
         requests.post(f"{API_URL}/alerts/evaluate", json=payload, timeout=2.0)
