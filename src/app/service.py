@@ -9,6 +9,7 @@ import pandas as pd
 from sensor_processor.cleaning import clean_measurements
 from sensor_processor.models import ProcessingConfig
 
+from .alerts import trigger_alert_evaluation
 from .db import db
 from .schemas import ProcessingStats, ProcessRequest
 
@@ -80,7 +81,15 @@ def process_readings(request: ProcessRequest) -> ProcessOutcome:
     cleaned = clean_measurements(raw_documents, clean_config)
     measurement_rows = _explode_measurements(cleaned.clean_frame)
 
-    db.save_measurements(measurement_rows)
+    saved_records = db.save_measurements(measurement_rows)
+
+    for record in saved_records:
+        param_id = record[2]
+        value = record[5]
+        collected_at = record[6]
+        if param_id is not None and value is not None:
+            trigger_alert_evaluation(param_id, float(value), collected_at)
+
     raw_ids = list(cleaned.clean_frame.get("_id", []))
     try:
         db.delete_raw_sent(raw_ids)

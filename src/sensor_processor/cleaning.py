@@ -167,16 +167,17 @@ def _validate_ranges(frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
             continue
 
         for column, (min_value, max_value) in rules["range"].items():
-            column_mask = (
-                subset[column].between(min_value, max_value, inclusive="both")
-                | subset[column].isna()
-            )
-            invalid_index = subset.index[~column_mask]
-            if len(invalid_index) > 0:
-                valid_mask.loc[invalid_index] = False
-                rejected_frames.append(
-                    subset.loc[invalid_index].assign(reject_reason=f"{column}_out_of_range")
+            if column in subset.columns:
+                column_mask = (
+                    subset[column].between(min_value, max_value, inclusive="both")
+                    | subset[column].isna()
                 )
+                invalid_index = subset.index[~column_mask]
+                if len(invalid_index) > 0:
+                    valid_mask.loc[invalid_index] = False
+                    rejected_frames.append(
+                        subset.loc[invalid_index].assign(reject_reason=f"{column}_out_of_range")
+                    )
 
     return frame.loc[valid_mask].copy(), _concat_frames(rejected_frames)
 
