@@ -8,6 +8,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Iterator
 
 import pandas as pd
+
 try:
     import psycopg2
     from psycopg2.extras import execute_values
@@ -127,7 +128,9 @@ class Database:
             self._ensure_measurements_conflict_target(cursor)
 
     def _ensure_measurements_compatibility(self, cursor) -> None:
-        if _column_exists(cursor, "measurements", "uid") and not _column_exists(cursor, "measurements", "sensor_uid"):
+        if _column_exists(cursor, "measurements", "uid") and not _column_exists(
+            cursor, "measurements", "sensor_uid"
+        ):
             cursor.execute("ALTER TABLE measurements RENAME COLUMN uid TO sensor_uid")
 
         statements = [
@@ -138,7 +141,8 @@ class Database:
             "ALTER TABLE measurements ADD COLUMN IF NOT EXISTS raw_value NUMERIC(14, 4)",
             "ALTER TABLE measurements ADD COLUMN IF NOT EXISTS value NUMERIC(14, 4)",
             "ALTER TABLE measurements ADD COLUMN IF NOT EXISTS collected_at TIMESTAMPTZ",
-            "ALTER TABLE measurements ADD COLUMN IF NOT EXISTS received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+            "ALTER TABLE measurements ADD COLUMN IF NOT EXISTS "
+            "received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
         ]
         for statement in statements:
             cursor.execute(statement)
@@ -158,25 +162,50 @@ class Database:
     def mark_raw_processed(self, raw_ids: list[object]) -> None:
         if not raw_ids:
             return
-        self.mongo_collection.update_many({"_id": {"$in": raw_ids}}, {"$set": {"_processada": True}})
+        self.mongo_collection.update_many(
+            {"_id": {"$in": raw_ids}}, {"$set": {"_processada": True}}
+        )
 
     def delete_raw_sent(self, raw_ids: list[object]) -> None:
         if not raw_ids:
             return
         self.mongo_collection.delete_many({"_id": {"$in": raw_ids}})
 
-    def save_measurements(self, frame: pd.DataFrame) -> int:
+    def save_measurements(self, frame: pd.DataFrame) -> list[tuple]:
         if frame.empty:
-            return 0
+            return []
+
+        mapping = {}
+        fallback_mapping = {}
+        with self.cursor() as cursor:
+            cursor.execute("""
+                SELECT s."idDatalogger", pt.json_key, p.id
+                FROM parameters p
+                JOIN stations s ON p."idStation" = s.id
+                JOIN "parameterTypes" pt ON p."idTypeParam" = pt.id
+            """)
+            for station_uid, param_key, param_id in cursor.fetchall():
+                mapping[(station_uid, param_key)] = param_id
+
+                prefix = station_uid.split("-")[0]
+                fallback_mapping[(prefix, param_key)] = param_id
 
         records = []
         for row in frame.to_dict(orient="records"):
+            sensor_uid = row["sensor_uid"]
+            param_name = row["parameter_name"]
+
+            real_param_id = mapping.get((sensor_uid, param_name))
+            if real_param_id is None:
+                prefix = sensor_uid.split("-")[0]
+                real_param_id = fallback_mapping.get((prefix, param_name))
+
             records.append(
                 (
-                    row["sensor_uid"],
+                    sensor_uid,
                     row["sensor_type"],
-                    _parameter_id_for_name(row["parameter_name"]),
-                    row["parameter_name"],
+                    real_param_id,
+                    param_name,
                     _decimal_or_none(row.get("raw_value")),
                     _decimal_or_none(row.get("value")),
                     _to_datetime(row["collected_at"]),
@@ -203,7 +232,7 @@ class Database:
 
         with self.cursor() as cursor:
             execute_values(cursor, statement, records, page_size=500)
-        return len(records)
+        return records
 
 
 def _decimal_or_none(value: object) -> Decimal | None:
@@ -233,21 +262,6 @@ def _column_exists(cursor, table_name: str, column_name: str) -> bool:
         (table_name, column_name),
     )
     return cursor.fetchone() is not None
-
-
-def _parameter_id_for_name(parameter_name: str) -> int | None:
-    mapping = {
-        "chuva_mm": 1,
-        "umidade": 2,
-        "co2": 3,
-        "pm25": 4,
-        "qualidade_index": 5,
-        "umidade_solo": 6,
-        "ph": 7,
-        "temp_solo": 8,
-        "temperatura": 9,
-    }
-    return mapping.get(parameter_name)
 
 
 db = Database()

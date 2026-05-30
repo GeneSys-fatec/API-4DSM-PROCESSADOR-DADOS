@@ -7,7 +7,6 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
 SensorType = Literal["pluviometro", "qualidade_ar", "solo"]
 NullStrategy = Literal["ignore", "keep_null", "interpolate"]
 AggregationPeriod = Literal["hour", "day"]
