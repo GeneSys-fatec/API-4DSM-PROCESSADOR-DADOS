@@ -4,6 +4,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
@@ -44,7 +45,7 @@ class ProcessingScheduler:
                 now = datetime.now(timezone.utc)
                 self.state.last_run = now
                 self.state.next_run = now
-            except Exception: 
+            except Exception:
                 logger.exception("Falha no scheduler")
 
         self._scheduler.add_job(

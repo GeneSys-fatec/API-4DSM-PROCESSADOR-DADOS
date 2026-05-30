@@ -67,9 +67,7 @@ def clean_measurements(
         invalid_type_mask = working["sensor_type"].eq("unknown")
         if invalid_type_mask.any():
             rejected_frames.append(
-                working.loc[invalid_type_mask].assign(
-                    reject_reason="unknown_sensor_type"
-                )
+                working.loc[invalid_type_mask].assign(reject_reason="unknown_sensor_type")
             )
             working = working.loc[~invalid_type_mask].copy()
 
@@ -119,7 +117,7 @@ def clean_measurements(
             started_at=started_at,
             finished_at=pd.Timestamp.utcnow().to_pydatetime(),
         )
-    except Exception as exc: 
+    except Exception as exc:
         logger.exception("Falha ao limpar as medições: %s", exc)
         raise
 
@@ -169,15 +167,17 @@ def _validate_ranges(frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
             continue
 
         for column, (min_value, max_value) in rules["range"].items():
-            column_mask = subset[column].between(min_value, max_value, inclusive="both") | subset[column].isna()
-            invalid_index = subset.index[~column_mask]
-            if len(invalid_index) > 0:
-                valid_mask.loc[invalid_index] = False
-                rejected_frames.append(
-                    subset.loc[invalid_index].assign(
-                        reject_reason=f"{column}_out_of_range"
-                    )
+            if column in subset.columns:
+                column_mask = (
+                    subset[column].between(min_value, max_value, inclusive="both")
+                    | subset[column].isna()
                 )
+                invalid_index = subset.index[~column_mask]
+                if len(invalid_index) > 0:
+                    valid_mask.loc[invalid_index] = False
+                    rejected_frames.append(
+                        subset.loc[invalid_index].assign(reject_reason=f"{column}_out_of_range")
+                    )
 
     return frame.loc[valid_mask].copy(), _concat_frames(rejected_frames)
 
@@ -196,7 +196,9 @@ def _drop_rows_with_nulls(frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFra
 def _interpolate_missing_values(frame: pd.DataFrame) -> pd.DataFrame:
     interpolated_frames = []
 
-    for (_, _sensor_type), group in frame.sort_values(["uid", "unixtime"]).groupby(["uid", "sensor_type"], sort=False):
+    for (_, _sensor_type), group in frame.sort_values(["uid", "unixtime"]).groupby(
+        ["uid", "sensor_type"], sort=False
+    ):
         subset = group.copy()
         sensor_type = subset["sensor_type"].iloc[0]
         columns = [
