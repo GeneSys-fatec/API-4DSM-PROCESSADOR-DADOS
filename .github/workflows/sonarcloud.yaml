@@ -1,0 +1,48 @@
+name: CI e Qualidade de Código (SonarCloud)
+
+on:
+  pull_request:
+    branches: [ "develop", "release", "master" ]
+  push:
+    branches: [ "develop", "release", "master" ]
+
+jobs:
+  sonarcloud:
+    name: Testes, Lint e SonarCloud
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Clonar o repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Obrigatório para o SonarCloud analisar o histórico
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Mesma versão utilizada no pipeline principal
+          cache: 'pip'
+
+      - name: Instalar Dependências
+        run: |
+          pip install -r requirements.txt
+          pip install ruff pytest-cov
+
+      - name: Executar Lint
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Executar Testes e Gerar Cobertura
+        run: pytest tests/ -v --tb=short --cov=src --cov-report=xml
+
+      - name: Análise do SonarCloud
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.sources=src
+            -Dsonar.tests=tests
